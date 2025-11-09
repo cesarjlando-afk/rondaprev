@@ -120,9 +120,41 @@
       font-size: 1.1rem;
     }
   }
+  
+    .cabecario {
+  background-color: #f0f4f8;
+  color: #333;
+  padding: 20px;
+  text-align: center;
+  border-bottom: 1px solid #ccc;
+  margin-bottom: 20px;
+  font-family: 'Arial', sans-serif;
+}
+
+.cabecario h1 {
+  font-size: clamp(1.4rem, 4vw, 2rem);
+  margin: 0;
+}
+
+.cabecario h1 span {
+  display: block;
+  font-size: clamp(1rem, 3vw, 1.2rem);
+  font-weight: normal;
+  margin-top: 5px;
+}
+
+.cabecario p {
+  font-size: clamp(1rem, 2.5vw, 1.2rem);
+  margin-top: 10px;
+}
+
 </style>
 </head>
 <body>
+  <header class="cabecario">
+  <h1>Birmann 29 <span>(Antonio Alves F. Guedes) - B29</span></h1>
+  <p>Brig. Faria Lima, 3729 - Itaim Bibi, São Paulo - SP</p>
+</header>
 <div id="login" class="visible">
   <h2>Login de Acesso</h2>
   <label>Usuário:</label><br>
@@ -587,11 +619,31 @@ function verificarChecklistCompleto() {
 }
 
 function verificarAntesDeGerar() {
-  const btnPDF = document.getElementById("btnPDF");
-  if (btnPDF.disabled) {
-    alert("⚠️ Você precisa verificar todos os itens e capturar as fotos antes de gerar o relatório.");
+  const itens = document.querySelectorAll('.item');
+  let todosValidos = true;
+
+  itens.forEach((item, index) => {
+    const checkbox = item.querySelector('.check');
+    const descricao = item.querySelector('.controles input[type="text"]');
+    const canvas = item.querySelector('canvas');
+
+    const marcado = checkbox?.checked;
+    const texto = descricao?.value.trim();
+    const temFoto = canvas && canvas.width > 0;
+
+    if (!marcado || !texto || !temFoto) {
+      todosValidos = false;
+      item.style.border = "2px solid red"; // destaque visual
+    } else {
+      item.style.border = "1px solid #ccc";
+    }
+  });
+
+  if (!todosValidos) {
+    alert("⚠️ Todos os itens devem estar verificados, com descrição preenchida e foto capturada antes de gerar o relatório.");
     return;
   }
+
   gerarPDF();
 }
 
@@ -600,11 +652,32 @@ function gerarPDF() {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
+  const pageWidth = doc.internal.pageSize.getWidth();
   let y = 10;
-  doc.setFontSize(14);
-  doc.text(`Checklist Técnico - ${usuarioAtual}`, 10, y);
+
+  // 🔷 Cabeçário centralizado
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  const titulo1 = 'Birmann 29 (Antonio Alves F. Guedes) - B29';
+  const textWidth1 = doc.getTextWidth(titulo1);
+  doc.text(titulo1, (pageWidth - textWidth1) / 2, y);
+  y += 8;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(12);
+  const titulo2 = 'Brig. Faria Lima, 3729 - Itaim Bibi, São Paulo - SP';
+  const textWidth2 = doc.getTextWidth(titulo2);
+  doc.text(titulo2, (pageWidth - textWidth2) / 2, y);
   y += 10;
 
+  // 🔷 Título do checklist
+  doc.setFontSize(14);
+  const titulo3 = `Checklist Técnico - ${usuarioAtual}`;
+  const textWidth3 = doc.getTextWidth(titulo3);
+  doc.text(titulo3, (pageWidth - textWidth3) / 2, y);
+  y += 10;
+
+  // 🔷 Loop dos itens
   for (let i = 0; i < itens.length; i++) {
     const item = itens[i];
     const titulo = item.querySelector('label').innerText.trim();
@@ -636,6 +709,7 @@ function gerarPDF() {
     }
   }
 
+  // 🔷 Rodapé com data de envio
   const horaEnvio = new Date().toLocaleString();
   doc.text(`Enviado em: ${horaEnvio}`, 10, y);
 
@@ -645,7 +719,6 @@ function gerarPDF() {
   doc.save(nomeArquivo);
   alert("✅ PDF gerado com sucesso!");
 }
-
 function iniciarRonda() {
   if (confirm("Tem certeza que deseja iniciar uma nova ronda?.")) {
     localStorage.removeItem(`checklist_${usuarioAtual}`);
