@@ -657,6 +657,12 @@ function verificarAntesDeGerar() {
     if (!marcado || !texto || !temFoto) {
       todosValidos = false;
       item.style.border = "2px solid red";
+
+      // Remove o border vermelho após 8 segundos
+      setTimeout(() => {
+        item.style.border = "1px solid #ccc";
+      }, 8000);
+
     } else {
       item.style.border = "1px solid #ccc";
     }
