@@ -462,6 +462,23 @@
   </div>
 </div>
 <!-- 17: Painel de Controle de Incêndio -->
+<div class="item" data-id="17">
+  <label><input type="checkbox" class="check" onchange="toggleItem(this)">Painel Alarme de Incêndio</label>
+  <div class="controles">
+    <button onclick="abrirCamera(17)">📸 Abrir Câmera</button>
+    <canvas id="canvas17"></canvas>
+    <div class="hora-captura"></div>
+    <input type="text" placeholder="Descrição..." oninput="salvarEstado()">
+  </div>
+  <div class="avaliacao">
+    <button onclick="avaliarItem(this, true)">✅ Conforme</button>
+    <button onclick="avaliarItem(this, false)">❌ Não Conforme</button>
+  </div>
+  <div class="descricaoExtra">
+    <input type="text" class="descricaoExtraInput" placeholder="Descreva o problema..." oninput="validarDescricao(this)">
+    <button disabled onclick="salvarNaoConforme(this)">💾 Salvar</button>
+  </div>
+</div>
 
 <!-- Bloco único de câmera -->
 <div id="blocoCamera">
