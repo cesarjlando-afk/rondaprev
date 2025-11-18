@@ -496,10 +496,10 @@ let itemAtivo = null;
 let horaInicio = null;
 let horaTermino = null;
 
+// verifica se existe ronda ativa
 if (localStorage.getItem("rondaIniciada") === "true") {
   rondaIniciada = true;
 }
-
 
 const usuariosPermitidos = {
   "Alessandro Caiana": "02476",
@@ -521,6 +521,7 @@ function verificarLogin() {
   }
 }
 
+// Marca/desmarca item
 function toggleItem(checkbox) {
   const item = checkbox.closest('.item');
   if (!rondaIniciada) {
@@ -543,47 +544,53 @@ function toggleItem(checkbox) {
   salvarEstado();
 }
 
+// abrir câmera
 function abrirCamera(id) {
   itemAtivo = id;
   const video = document.getElementById("videoUnico");
   const blocoCamera = document.getElementById("blocoCamera");
 
-  navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: "environment" } } })
-    .then(stream => {
-      video.srcObject = stream;
-      video.style.display = "block";
-      blocoCamera.style.display = "block";
-      streamAtual = stream;
-      setTimeout(() => {
-        blocoCamera.scrollIntoView({ behavior: "smooth", block: "center" });
-      }, 300);
-    })
-    .catch(err => {
-      alert("Erro ao acessar a câmera: " + err.message);
-    });
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } })
+  .then(stream => {
+    video.srcObject = stream;
+    video.style.display = "block";
+    blocoCamera.style.display = "block";
+    streamAtual = stream;
+
+    setTimeout(() => {
+      blocoCamera.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 300);
+  })
+  .catch(err => {
+    alert("Erro ao acessar a câmera: " + err.message);
+  });
 }
 
+// capturar foto única
 function capturarFotoUnica() {
   if (!itemAtivo) return;
 
   const video = document.getElementById("videoUnico");
   const canvas = document.getElementById(`canvas${itemAtivo}`);
   const ctx = canvas.getContext('2d');
-  canvas.style.display = "block";
+
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-  // 🔹 Salva a imagem capturada no localStorage
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  canvas.style.display = "block";
+
+  // SALVAR FOTO NO LOCALSTORAGE (corrigido)
   const imgData = canvas.toDataURL("image/jpeg", 0.8);
   localStorage.setItem(`foto_${itemAtivo}`, imgData);
 
+  // salva horário
   const hora = new Date().toLocaleString();
   const item = document.querySelector(`.item[data-id="${itemAtivo}"]`);
   item.querySelector('.hora-captura').innerText = `Capturado em: ${hora}`;
   item.setAttribute("data-foto", "true");
 
-  // 🔹 Fecha a câmera e esconde o vídeo
+  // fechar câmera
   if (streamAtual) {
     streamAtual.getTracks().forEach(track => track.stop());
     streamAtual = null;
@@ -591,24 +598,23 @@ function capturarFotoUnica() {
     document.getElementById("blocoCamera").style.display = "none";
   }
 
-  // 🔹 Rola a tela de volta para o item correspondente
+  // voltar para o item
   item.scrollIntoView({ behavior: "smooth", block: "center" });
 
-  // 🔹 Ajusta visibilidade dos botões e campos
   item.querySelector('.controles').style.display = "none";
   item.querySelector('.avaliacao').style.display = "block";
   item.querySelector('input[type="text"]').style.display = "none";
 
+  salvarEstado();
   verificarChecklistCompleto();
 }
-
-
 
 function validarDescricao(input) {
   const btnSalvar = input.nextElementSibling;
   btnSalvar.disabled = input.value.trim() === "";
 }
 
+// salvar estado NAO conforme
 function salvarNaoConforme(btn) {
   const item = btn.closest('.item');
   const extraInput = item.querySelector('.descricaoExtraInput');
@@ -616,96 +622,62 @@ function salvarNaoConforme(btn) {
   descricaoInput.value = extraInput.value.trim();
 
   salvarEstado();
-  item.classList.remove('checked');
   item.querySelector('.descricaoExtra').style.display = "none";
   item.querySelector('.controles').style.display = "block";
   descricaoInput.style.display = "block";
 }
 
-function salvarNaoConforme(btn) {
-  const item = btn.closest('.item');
-  const extraInput = item.querySelector('.descricaoExtraInput');
-  const descricaoInput = item.querySelector('input[type="text"]');
-  descricaoInput.value = extraInput.value.trim();
-
-  salvarEstado();
-  item.classList.remove('checked');
-  item.querySelector('.descricaoExtra').style.display = "none";
-  item.querySelector('.controles').style.display = "block";
-  descricaoInput.style.display = "block";
-}
-
+// botão PDF fica sempre habilitado
 function verificarChecklistCompleto() {
-  const itens = document.querySelectorAll('.item');
-  const todosVerificados = Array.from(itens).every(item => item.querySelector('.check').checked);
-  const todasFotosCapturadas = Array.from(itens).every(item => item.getAttribute("data-foto") === "true");
-
-  const btnPDF = document.getElementById("btnPDF");
-  btnPDF.disabled = !(todosVerificados && todasFotosCapturadas);
-}
-// 🔹 Mantém o botão SEMPRE ativo
-function verificarChecklistCompleto() {
-  const btnPDF = document.getElementById("btnPDF");
-  btnPDF.disabled = false; // sempre habilitado
+  document.getElementById("btnPDF").disabled = false;
 }
 
-// 🔹 Só gera PDF se todos os itens estiverem verificados
+// validar antes de gerar PDF
 function verificarAntesDeGerar() {
   const itens = document.querySelectorAll('.item');
   let todosValidos = true;
 
   itens.forEach((item) => {
-    const checkbox = item.querySelector('.check');
-    const descricao = item.querySelector('input[type="text"]');
+    const marcado = item.querySelector('.check').checked;
+    const descricao = item.querySelector('input[type="text"]').value.trim();
     const canvas = item.querySelector('canvas');
-
-    const marcado = checkbox?.checked;
-    const texto = descricao?.value.trim();
     const temFoto = canvas && canvas.width > 0;
 
-    // Se estiver faltando qualquer coisa, marca como inválido
-    if (!marcado || !texto || !temFoto) {
+    if (!marcado || !descricao || !temFoto) {
       todosValidos = false;
-
       item.style.border = "2px solid red";
 
-      // Remove destaque após 8 segundos
       setTimeout(() => {
         item.style.border = "1px solid #ccc";
       }, 8000);
-
-    } else {
-      item.style.border = "1px solid #ccc";
     }
   });
 
-  // Se houver item faltando, não deixa gerar
   if (!todosValidos) {
     alert("⚠️ Para gerar o PDF, todos os itens precisam estar marcados, com descrição e foto.");
     return;
   }
 
-  // Tudo ok → gerar PDF
+  horaTermino = new Date().toLocaleString("pt-BR");
+  localStorage.setItem("horaTermino", horaTermino);
+
   gerarPDF();
 }
 
-
-
+// gerar PDF
 function gerarPDF() {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF("p", "mm", "a4");
 
-  // 🔹 CABEÇÁRIO CENTRALIZADO NO PDF
+  // CABEÇARIO
   doc.setFontSize(18);
   doc.text("Birmann 29 (Antonio Alves F. Guedes) - B29", 105, 15, { align: "center" });
 
   doc.setFontSize(12);
-  doc.text("Brig. Faria Lima, 3729 - Itaim Bibi, São Paulo - SP",
-           105, 22, { align: "center" });
+  doc.text("Brig. Faria Lima, 3729 - Itaim Bibi, São Paulo - SP", 105, 22, { align: "center" });
+  doc.line(10, 28, 200, 28);
 
-  doc.line(10, 28, 200, 28); // linha separadora
-
-  // 🔹 TÍTULO DO RELATÓRIO
+  // título
   doc.setFontSize(16);
   doc.text("Relatório de Ronda Preventiva", 105, 38, { align: "center" });
 
@@ -735,7 +707,7 @@ function gerarPDF() {
     doc.text(`Descrição: ${descricao}`, 10, y);
     y += 8;
 
-    // 🔹 INSERIR IMAGEM AJUSTADA
+    // IMAGEM 100% restaurada sem cortar
     if (canvas && canvas.width > 0) {
       const imgData = canvas.toDataURL("image/jpeg", 0.85);
       const maxW = 90, maxH = 65;
@@ -764,31 +736,24 @@ function gerarPDF() {
     }
   });
 
-  // 🔥 RODAPÉ: HORA DE INÍCIO E TÉRMINO DA RONDA
+  // rodapé
   const hInicio = horaInicio || localStorage.getItem("horaInicio") || "Não informado";
   const hTermino = horaTermino || localStorage.getItem("horaTermino") || "Não informado";
 
   doc.setFontSize(10);
-  doc.text(
-    `Ronda iniciada: ${hInicio}  |  Ronda finalizada: ${hTermino}`,
-    10,
-    290
-  );
+  doc.text(`Ronda iniciada: ${hInicio}  |  Ronda finalizada: ${hTermino}`, 10, 290);
 
-  // 🔹 SALVAR PDF
   const nomeArquivo = `Ronda_${usuarioAtual}_${new Date().toLocaleDateString()}_${new Date().getTime()}.pdf`;
   doc.save(nomeArquivo);
 
   alert("✅ PDF gerado com sucesso!");
 }
 
-
-
+// iniciar ronda
 function iniciarRonda() {
-  if (confirm("Tem certeza que deseja iniciar uma nova ronda?.")) {
-    
-    // 🔥 SALVA A HORA DE INÍCIO DA RONDA
-    horaInicio = new Date().toLocaleString();
+  if (confirm("Tem certeza que deseja iniciar uma nova ronda?")) {
+
+    horaInicio = new Date().toLocaleString("pt-BR");
     localStorage.setItem("horaInicio", horaInicio);
 
     localStorage.removeItem(`checklist_${usuarioAtual}`);
@@ -813,7 +778,7 @@ function iniciarRonda() {
   }
 }
 
-
+// salvar estado
 function salvarEstado() {
   const itens = document.querySelectorAll('.item');
   const dados = [];
@@ -830,6 +795,7 @@ function salvarEstado() {
   localStorage.setItem(`checklist_${usuarioAtual}`, JSON.stringify(dados));
 }
 
+// restaurar estado
 function restaurarEstado() {
   const dados = JSON.parse(localStorage.getItem(`checklist_${usuarioAtual}`) || '[]');
   const itens = document.querySelectorAll('.item');
@@ -849,6 +815,7 @@ function restaurarEstado() {
   verificarChecklistCompleto();
 }
 
+// avaliação
 function avaliarItem(btn, conforme) {
   const item = btn.closest('.item');
   const descricaoInput = item.querySelector('input[type="text"]');
@@ -856,7 +823,6 @@ function avaliarItem(btn, conforme) {
   if (conforme) {
     descricaoInput.value = "Conforme";
     salvarEstado();
-    item.classList.remove('checked');
     item.querySelector('.avaliacao').style.display = "none";
     item.querySelector('.controles').style.display = "block";
     descricaoInput.style.display = "block";
@@ -865,6 +831,8 @@ function avaliarItem(btn, conforme) {
     item.querySelector('.descricaoExtra').style.display = "block";
   }
 }
+
+// relógio
 function atualizarDataHora() {
   const agora = new Date();
   const formatado = agora.toLocaleString('pt-BR', {
@@ -881,35 +849,43 @@ function atualizarDataHora() {
 
 setInterval(atualizarDataHora, 1000);
 
+// registrar service worker
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("service-worker.js")
+    .then(() => console.log("Service Worker registrado"))
+    .catch(err => console.log("Erro SW:", err));
+}
 
-
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("service-worker.js")
-      .then(() => console.log("✅ Service Worker registrado com sucesso!"))
-      .catch(err => console.log("❌ Erro ao registrar Service Worker:", err));
-  }
-
+// RESTAURAR FOTOS APÓS ATUALIZAR (correção definitiva)
 window.addEventListener("load", () => {
   document.querySelectorAll('.item').forEach((item) => {
     const id = item.getAttribute("data-id");
     const canvas = document.getElementById(`canvas${id}`);
     if (!canvas) return;
 
-    const ctx = canvas.getContext("2d");
     const savedImage = localStorage.getItem(`foto_${id}`);
 
     if (savedImage) {
       const img = new Image();
+
       img.onload = () => {
+        const ctx = canvas.getContext("2d");
+
+        // ajusta tamanho antes de desenhar
+        canvas.width = img.width;
+        canvas.height = img.height;
+
         canvas.style.display = "block";
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
         item.setAttribute("data-foto", "true");
       };
+
       img.src = savedImage;
     }
   });
 });
-
 </script>
+
 </body>
 </html>
